@@ -23,17 +23,23 @@ public class RemoteControlConfig {
     public static RemoteControlConfig get() {
         if (instance == null) {
             instance = load();
+            String tokenMask = instance.apiToken.isEmpty() ? "(empty)" : "(set)";
+            LOGGER.info("Config loaded: apiUrl={}, apiToken={}", instance.apiUrl, tokenMask);
         }
         return instance;
     }
 
     private static RemoteControlConfig load() {
+        LOGGER.info("Loading config from: {}", CONFIG_PATH.toAbsolutePath());
         if (Files.exists(CONFIG_PATH)) {
             try (Reader reader = new FileReader(CONFIG_PATH.toFile())) {
+                LOGGER.info("Config file found and loaded successfully");
                 return GSON.fromJson(reader, RemoteControlConfig.class);
             } catch (IOException e) {
                 LOGGER.error("Failed to load config, using defaults", e);
             }
+        } else {
+            LOGGER.warn("Config file not found at: {}", CONFIG_PATH.toAbsolutePath());
         }
         RemoteControlConfig config = new RemoteControlConfig();
         config.save();
