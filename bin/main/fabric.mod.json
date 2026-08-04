@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "remote_control",
+  "version": "${version}",
+  "name": "Remote Control",
+  "description": "Remote Control for Clan IMG",
+  "authors": [],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/remote_control/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-datagen": [
+      "net.clanimg.remote_control.client.Remote_controlDataGenerator"
+    ],
+    "client": [
+      "net.clanimg.remote_control.client.Remote_controlClient"
+    ],
+    "main": [
+      "net.clanimg.remote_control.Remote_control"
+    ]
+  },
+  "mixins": [
+    "remote_control.mixins.json",
+    {
+      "config": "remote_control.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
