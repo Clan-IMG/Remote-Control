@@ -57,6 +57,14 @@ public class PaymentPoller {
     }
 
     private static void processPayments(MinecraftClient client, RemoteControlConfig cfg, JsonArray payments) {
+        if (payments.isEmpty()) return;
+
+        // If a payout server is configured, only process payments when there
+        if (!cfg.payoutServer.isEmpty() && !AutoReconnectManager.isOnPayoutServer()) {
+            client.execute(() -> AutoReconnectManager.switchToPayoutServer(client));
+            return;
+        }
+
         for (JsonElement el : payments) {
             JsonObject p = el.getAsJsonObject();
             String id = p.get("id").getAsString();

@@ -18,6 +18,9 @@ public class RemoteControlConfig {
     public String apiUrl = "http://localhost:8000";
     public String apiToken = "";
 
+    public String payoutServer = "";
+    public String spawnCommand = "";
+
     private static RemoteControlConfig instance;
 
     public static RemoteControlConfig get() {
