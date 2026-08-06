@@ -32,20 +32,21 @@ public class PaymentPoller {
     private static int commandDelayTicks = 0;
     private static final int COMMAND_INTERVAL_TICKS = 60; // 3 Sekunden Abstand zwischen Befehlen
 
-    /** Zuletzt gesendeter /pay-Befehl — wird kurz auf eine "Spieler nicht online"-Meldung geprueft */
+    /** Zuletzt gesendeter /pay-Befehl — wartet auf die Erfolgs- oder Fehlermeldung vom Server */
     private static volatile String pendingPaymentId = null;
     private static volatile String pendingPaymentName = null;
     private static int confirmTicksLeft = 0;
-    private static final int CONFIRM_WINDOW_TICKS = 40; // 2 Sekunden
+    private static final int CONFIRM_WINDOW_TICKS = 60; // 3 Sekunden — muss auf eine Bestaetigung warten
 
     private record PendingPayment(String id, String name, BigDecimal amount) {}
 
     public static void onTick(MinecraftClient client) {
         if (client.player == null) return;
 
-        // Warten, ob nach dem letzten /pay eine Fehlermeldung (Spieler offline) eintrifft
+        // Ohne Erfolgs- oder Fehlermeldung innerhalb des Fensters gilt die Zahlung als nicht bestaetigt
         if (confirmTicksLeft > 0 && --confirmTicksLeft == 0 && pendingPaymentId != null) {
-            markDone(RemoteControlConfig.get(), pendingPaymentId);
+            LOGGER.warn("Keine Bestaetigung fuer Zahlung an {} erhalten, gilt als fehlgeschlagen", pendingPaymentName);
+            markFailed(RemoteControlConfig.get(), pendingPaymentId, "Keine Bestätigung vom Server erhalten (Zeitüberschreitung).");
             pendingPaymentId = null;
             pendingPaymentName = null;
         }
@@ -93,16 +94,29 @@ public class PaymentPoller {
                 .whenComplete((v, t) -> running.set(false));
     }
 
-    /** Called for every incoming system/game chat message — checks for a "Spieler nicht online" reply to /pay */
+    /** Called for every incoming system/game chat message — waits for the /pay success or failure reply */
     public static void onGameMessage(Text message) {
         String id = pendingPaymentId;
         String name = pendingPaymentName;
         if (id == null || name == null || confirmTicksLeft <= 0) return;
 
         String text = message.getString();
-        if (text.contains(name) && text.toLowerCase(Locale.ROOT).contains("ist nicht online")) {
+        if (!text.contains(name)) return;
+        String lower = text.toLowerCase(Locale.ROOT);
+
+        if (lower.contains("ist nicht online")) {
+            RemoteControlConfig cfg = RemoteControlConfig.get();
+            String reason = cfg.payoutServer.isEmpty()
+                    ? "Spieler war zum Zeitpunkt der Zahlung nicht online."
+                    : "Spieler war nicht online. Muss dafür auf dem Server \"" + cfg.payoutServer + "\" sein.";
             LOGGER.warn("Zahlung an {} abgebrochen, Spieler nicht online: {}", name, text);
-            markFailed(RemoteControlConfig.get(), id, "Spieler war zum Zeitpunkt der Zahlung nicht online.");
+            markFailed(cfg, id, reason);
+            pendingPaymentId = null;
+            pendingPaymentName = null;
+            confirmTicksLeft = 0;
+        } else if (lower.contains("du hast") && lower.contains("gegeben")) {
+            LOGGER.info("Zahlung an {} bestaetigt: {}", name, text);
+            markDone(RemoteControlConfig.get(), id);
             pendingPaymentId = null;
             pendingPaymentName = null;
             confirmTicksLeft = 0;
