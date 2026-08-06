@@ -10,10 +10,14 @@ public class AutoReconnectManager {
 
     private static volatile boolean connectingToPayoutServer = false;
     private static volatile boolean onPayoutServer = false;
-    private static int switchTimeoutTicks = 0;
-    private static final int SWITCH_TIMEOUT = 400; // 20 s safety reset
+
+    // A "/server X" switch on a proxy (Bungee/Velocity) is seamless — no new
+    // ClientPlayConnectionEvents.JOIN fires, so arrival must be timer-based.
+    private static int arrivalDelay = 0;
+    private static final int ARRIVAL_DELAY_TICKS = 100; // 5 s budget for the proxy switch itself
 
     private static int homeCommandDelay = 0;
+    private static final int HOME_COMMAND_STABILIZE_TICKS = 60; // 3 s after arrival before the teleport command
 
     private static int payoutSwitchDelay = 0;
     private static final int PAYOUT_SWITCH_DELAY = 200; // 10 s
@@ -23,35 +27,28 @@ public class AutoReconnectManager {
 
     /** Called by ClientPlayConnectionEvents.JOIN */
     public static void onJoin(MinecraftClient client) {
-        switchTimeoutTicks = 0;
         periodicCheckTicks = 0;
 
-        if (connectingToPayoutServer) {
-            connectingToPayoutServer = false;
-            onPayoutServer = true;
-            RemoteControlConfig cfg = RemoteControlConfig.get();
-            if (!cfg.spawnCommand.isEmpty()) {
-                homeCommandDelay = 60; // 3 s
-            }
-            LOGGER.info("[RC] Joined payout server, spawn command in 3 s");
-        } else {
-            onPayoutServer = false;
-            RemoteControlConfig cfg = RemoteControlConfig.get();
-            if (!cfg.payoutServer.isEmpty()) {
-                payoutSwitchDelay = PAYOUT_SWITCH_DELAY;
-                LOGGER.info("[RC] Scheduling payout server switch in 10 s");
-            }
+        // Fresh connection to the network. Backend switches are seamless (handled
+        // entirely by the arrivalDelay timer below), so this only fires for a real login.
+        if (connectingToPayoutServer) return;
+
+        onPayoutServer = false;
+        RemoteControlConfig cfg = RemoteControlConfig.get();
+        if (!cfg.payoutServer.isEmpty()) {
+            payoutSwitchDelay = PAYOUT_SWITCH_DELAY;
+            LOGGER.info("[RC] Scheduling payout server switch in 10 s");
         }
     }
 
     /** Called by ClientPlayConnectionEvents.DISCONNECT */
     public static void onDisconnect() {
         onPayoutServer = false;
+        connectingToPayoutServer = false;
+        arrivalDelay = 0;
         homeCommandDelay = 0;
         payoutSwitchDelay = 0;
         periodicCheckTicks = 0;
-        // connectingToPayoutServer intentionally NOT reset here so BungeeCord
-        // disconnect→reconnect pairs work correctly
     }
 
     public static void switchToPayoutServer(MinecraftClient client) {
@@ -59,7 +56,7 @@ public class AutoReconnectManager {
         RemoteControlConfig cfg = RemoteControlConfig.get();
         if (cfg.payoutServer.isEmpty()) return;
         connectingToPayoutServer = true;
-        switchTimeoutTicks = 0;
+        arrivalDelay = ARRIVAL_DELAY_TICKS;
         client.player.networkHandler.sendChatCommand("server " + cfg.payoutServer);
         LOGGER.info("[RC] Switching to payout server: {}", cfg.payoutServer);
     }
@@ -73,18 +70,21 @@ public class AutoReconnectManager {
     }
 
     public static void onTick(MinecraftClient client) {
-        // Safety timeout for stuck connectingToPayoutServer flag
-        if (connectingToPayoutServer) {
-            if (++switchTimeoutTicks >= SWITCH_TIMEOUT) {
+        // Waiting for the seamless proxy switch to the payout server to complete
+        if (arrivalDelay > 0 && client.player != null) {
+            if (--arrivalDelay == 0) {
                 connectingToPayoutServer = false;
-                switchTimeoutTicks = 0;
-                LOGGER.warn("[RC] Payout server switch timed out, resetting");
+                onPayoutServer = true;
+                RemoteControlConfig cfg = RemoteControlConfig.get();
+                if (!cfg.spawnCommand.isEmpty()) {
+                    homeCommandDelay = HOME_COMMAND_STABILIZE_TICKS;
+                }
+                LOGGER.info("[RC] Assumed arrival on payout server, teleport command in 3 s");
             }
-        } else {
-            switchTimeoutTicks = 0;
+            return;
         }
 
-        // Send spawn command 3 s after arriving on payout server
+        // Send the teleport command a moment after arriving on the payout server
         if (homeCommandDelay > 0 && client.player != null) {
             if (--homeCommandDelay == 0) {
                 String cmd = RemoteControlConfig.get().spawnCommand;
@@ -121,3 +121,4 @@ public class AutoReconnectManager {
         }
     }
 }
+

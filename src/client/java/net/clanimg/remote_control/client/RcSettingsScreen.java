@@ -33,7 +33,6 @@ public class RcSettingsScreen extends Screen {
         payoutServerField = new TextFieldWidget(textRenderer, cx - 100, y + 24, 200, 20, Text.empty());
         payoutServerField.setMaxLength(64);
         payoutServerField.setText(cfg.payoutServer);
-        payoutServerField.setSuggestion(cfg.payoutServer.isEmpty() ? "survival" : null);
         addDrawableChild(payoutServerField);
 
         addDrawableChild(new TextWidget(cx - 100, y + 52, 200, 9,
@@ -41,7 +40,6 @@ public class RcSettingsScreen extends Screen {
         spawnCommandField = new TextFieldWidget(textRenderer, cx - 100, y + 64, 200, 20, Text.empty());
         spawnCommandField.setMaxLength(128);
         spawnCommandField.setText(cfg.spawnCommand);
-        spawnCommandField.setSuggestion(cfg.spawnCommand.isEmpty() ? "/home pos" : null);
         addDrawableChild(spawnCommandField);
 
         addDrawableChild(ButtonWidget.builder(Text.literal("Speichern"), btn -> save())
@@ -59,6 +57,11 @@ public class RcSettingsScreen extends Screen {
         cfg.payoutServer = payoutServerField.getText().trim();
         cfg.spawnCommand = spawnCommandField.getText().trim();
         cfg.save();
+
+        if (client != null) {
+            client.inGameHud.getChatHud().addMessage(
+                Text.literal("[RC] Einstellungen gespeichert.").formatted(Formatting.GREEN));
+        }
 
         // Switch immediately if already connected and payout server is configured
         if (client.player != null && !cfg.payoutServer.isEmpty()) {
