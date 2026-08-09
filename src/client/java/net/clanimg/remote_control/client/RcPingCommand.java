@@ -91,6 +91,8 @@ public class RcPingCommand {
             source.sendFeedback(Text.literal("[RC] Verbindung wird geprüft...").formatted(Formatting.GRAY))
         );
 
+        client.execute(() -> source.sendFeedback(payoutStatusLine(cfg)));
+
         if (cfg.apiToken.isEmpty()) {
             client.execute(() ->
                 source.sendFeedback(statusLine("Token", false, "nicht konfiguriert - nutze: /rc token <token>"))
@@ -156,6 +158,23 @@ public class RcPingCommand {
         String symbol = ok ? "✓" : "✗";
         Formatting color = ok ? Formatting.GREEN : Formatting.RED;
         return Text.literal("[RC] " + label + ": " + symbol + " " + detail).formatted(color);
+    }
+
+    /** Zeigt, ob Zahlungen aktuell tatsaechlich ausgefuehrt werden koennen - unabhaengig von der API-Erreichbarkeit. */
+    private static MutableText payoutStatusLine(RemoteControlConfig cfg) {
+        if (cfg.payoutServer.isEmpty()) {
+            return Text.literal("[RC] Payout-Server: - nicht konfiguriert").formatted(Formatting.GRAY);
+        }
+        if (AutoReconnectManager.isInQueue()) {
+            return statusLine("Payout-Server", false, "wartet in der Warteschlange (Server voll) - Zahlungen pausiert");
+        }
+        if (AutoReconnectManager.isConnectingToPayoutServer()) {
+            return statusLine("Payout-Server", false, "wechselt gerade zu \"" + cfg.payoutServer + "\"");
+        }
+        if (AutoReconnectManager.isOnPayoutServer()) {
+            return statusLine("Payout-Server", true, "verbunden (\"" + cfg.payoutServer + "\")");
+        }
+        return statusLine("Payout-Server", false, "nicht verbunden");
     }
 }
 

@@ -102,6 +102,10 @@ public class AutoReconnectManager {
         return connectingToPayoutServer;
     }
 
+    public static boolean isInQueue() {
+        return inQueue;
+    }
+
     public static void onTick(MinecraftClient client) {
         // Stuck in the join queue (server full) — wait for onGameMessage to detect we've left it
         if (inQueue) return;
