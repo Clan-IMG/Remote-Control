@@ -1,8 +1,11 @@
 package net.clanimg.remote_control.client;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Locale;
 
 public class AutoReconnectManager {
 
@@ -10,6 +13,11 @@ public class AutoReconnectManager {
 
     private static volatile boolean connectingToPayoutServer = false;
     private static volatile boolean onPayoutServer = false;
+
+    // True while the server has put us in the "Server voll" join queue instead of
+    // actually connecting us — must not assume arrival / send the teleport command
+    // until the queue message tells us we've actually left it.
+    private static volatile boolean inQueue = false;
 
     // A "/server X" switch on a proxy (Bungee/Velocity) is seamless — no new
     // ClientPlayConnectionEvents.JOIN fires, so arrival must be timer-based.
@@ -45,6 +53,7 @@ public class AutoReconnectManager {
     public static void onDisconnect() {
         onPayoutServer = false;
         connectingToPayoutServer = false;
+        inQueue = false;
         arrivalDelay = 0;
         homeCommandDelay = 0;
         payoutSwitchDelay = 0;
@@ -56,9 +65,33 @@ public class AutoReconnectManager {
         RemoteControlConfig cfg = RemoteControlConfig.get();
         if (cfg.payoutServer.isEmpty()) return;
         connectingToPayoutServer = true;
+        inQueue = false;
         arrivalDelay = ARRIVAL_DELAY_TICKS;
         client.player.networkHandler.sendChatCommand("server " + cfg.payoutServer);
         LOGGER.info("[RC] Switching to payout server: {}", cfg.payoutServer);
+    }
+
+    /** Called for every incoming system/game chat message — watches for the join-queue state. */
+    public static void onGameMessage(Text message) {
+        if (!connectingToPayoutServer && !inQueue) return;
+
+        String lower = message.getString().toLowerCase(Locale.ROOT);
+        if (!lower.contains("warteschlange")) return;
+
+        if (!inQueue && (lower.contains("hinzugef") || lower.contains("voll"))) {
+            // Server is full — we were put in the queue instead of actually connecting.
+            // Cancel the arrival/teleport timers, sending any command now would kick us
+            // out of the queue again without ever reaching the payout server.
+            inQueue = true;
+            arrivalDelay = 0;
+            homeCommandDelay = 0;
+            LOGGER.info("[RC] Server voll, warte in der Warteschlange...");
+        } else if (inQueue && lower.contains("verlassen")) {
+            // We naturally left the queue (our turn came up) — now actually connecting.
+            inQueue = false;
+            arrivalDelay = ARRIVAL_DELAY_TICKS;
+            LOGGER.info("[RC] Warteschlange verlassen, warte auf Ankunft");
+        }
     }
 
     public static boolean isOnPayoutServer() {
@@ -70,6 +103,9 @@ public class AutoReconnectManager {
     }
 
     public static void onTick(MinecraftClient client) {
+        // Stuck in the join queue (server full) — wait for onGameMessage to detect we've left it
+        if (inQueue) return;
+
         // Waiting for the seamless proxy switch to the payout server to complete
         if (arrivalDelay > 0 && client.player != null) {
             if (--arrivalDelay == 0) {

@@ -20,7 +20,10 @@ public class Remote_controlClient implements ClientModInitializer {
             AutoReconnectManager.onDisconnect());
 
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (!overlay) PaymentPoller.onGameMessage(message);
+            if (!overlay) {
+                PaymentPoller.onGameMessage(message);
+                AutoReconnectManager.onGameMessage(message);
+            }
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
