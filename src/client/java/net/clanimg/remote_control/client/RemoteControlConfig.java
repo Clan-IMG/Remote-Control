@@ -15,8 +15,13 @@ public class RemoteControlConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("remote_control.json");
 
-    public String apiUrl = "http://localhost:8000";
-    public String apiToken = "";
+    // Remote Control API (Payout)
+    public String rcApiUrl = "https://rc.clan-img.net";
+    public String rcApiToken = "";
+
+    // Chat API (website_order_chat messages)
+    public String chatApiUrl = "https://api.clan-img.net";
+    public String chatApiToken = "";
 
     public String payoutServer = "";
     public String spawnCommand = "";
@@ -26,8 +31,10 @@ public class RemoteControlConfig {
     public static RemoteControlConfig get() {
         if (instance == null) {
             instance = load();
-            String tokenMask = instance.apiToken.isEmpty() ? "(empty)" : "(set)";
-            LOGGER.info("Config loaded: apiUrl={}, apiToken={}", instance.apiUrl, tokenMask);
+            String rcTokenMask = instance.rcApiToken.isEmpty() ? "(empty)" : "(set)";
+            String chatTokenMask = instance.chatApiToken.isEmpty() ? "(empty)" : "(set)";
+            LOGGER.info("Config loaded: rcApiUrl={}, rcApiToken={}, chatApiUrl={}, chatApiToken={}", 
+                instance.rcApiUrl, rcTokenMask, instance.chatApiUrl, chatTokenMask);
         }
         return instance;
     }

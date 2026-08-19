@@ -3,7 +3,6 @@ package net.clanimg.remote_control.client;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.MinecraftClient;
@@ -27,24 +26,6 @@ public class RcPingCommand {
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher) {
         dispatcher.register(
             ClientCommandManager.literal("rc")
-                .then(ClientCommandManager.literal("url")
-                    .then(ClientCommandManager.argument("url", StringArgumentType.greedyString())
-                        .executes(ctx -> {
-                            String url = StringArgumentType.getString(ctx, "url");
-                            setUrl(ctx.getSource(), url);
-                            return 1;
-                        })
-                    )
-                )
-                .then(ClientCommandManager.literal("token")
-                    .then(ClientCommandManager.argument("token", StringArgumentType.greedyString())
-                        .executes(ctx -> {
-                            String token = StringArgumentType.getString(ctx, "token");
-                            setToken(ctx.getSource(), token);
-                            return 1;
-                        })
-                    )
-                )
                 .then(ClientCommandManager.literal("status")
                     .executes(ctx -> {
                         showStatus(ctx.getSource());
@@ -60,27 +41,15 @@ public class RcPingCommand {
         );
     }
 
-    private static void setUrl(FabricClientCommandSource source, String url) {
-        RemoteControlConfig cfg = RemoteControlConfig.get();
-        cfg.apiUrl = url;
-        cfg.save();
-        source.sendFeedback(Text.literal("[RC] API-URL gespeichert: " + url).formatted(Formatting.GREEN));
-    }
-
-    private static void setToken(FabricClientCommandSource source, String token) {
-        RemoteControlConfig cfg = RemoteControlConfig.get();
-        cfg.apiToken = token;
-        cfg.save();
-        String masked = token.length() > 8 ? token.substring(0, 8) + "..." : "***";
-        source.sendFeedback(Text.literal("[RC] Token gespeichert: " + masked).formatted(Formatting.GREEN));
-    }
-
     private static void showStatus(FabricClientCommandSource source) {
         RemoteControlConfig cfg = RemoteControlConfig.get();
         source.sendFeedback(Text.literal("[RC] Status:").formatted(Formatting.AQUA));
-        source.sendFeedback(Text.literal("  URL: " + cfg.apiUrl).formatted(Formatting.GRAY));
-        String tokenStatus = cfg.apiToken.isEmpty() ? "nicht gesetzt" : "gesetzt (" + cfg.apiToken.substring(0, Math.min(8, cfg.apiToken.length())) + "...)";
-        source.sendFeedback(Text.literal("  Token: " + tokenStatus).formatted(Formatting.GRAY));
+        source.sendFeedback(Text.literal("  RC API: " + cfg.rcApiUrl).formatted(Formatting.GRAY));
+        String rcTokenStatus = cfg.rcApiToken.isEmpty() ? "nicht gesetzt" : "gesetzt (" + cfg.rcApiToken.substring(0, Math.min(8, cfg.rcApiToken.length())) + "...)";
+        source.sendFeedback(Text.literal("  RC Token: " + rcTokenStatus).formatted(Formatting.GRAY));
+        source.sendFeedback(Text.literal("  Chat API: " + cfg.chatApiUrl).formatted(Formatting.GRAY));
+        String chatTokenStatus = cfg.chatApiToken.isEmpty() ? "nicht gesetzt" : "gesetzt (" + cfg.chatApiToken.substring(0, Math.min(8, cfg.chatApiToken.length())) + "...)";
+        source.sendFeedback(Text.literal("  Chat Token: " + chatTokenStatus).formatted(Formatting.GRAY));
     }
 
     private static void executePing(FabricClientCommandSource source) {
@@ -93,23 +62,23 @@ public class RcPingCommand {
 
         client.execute(() -> source.sendFeedback(payoutStatusLine(cfg)));
 
-        if (cfg.apiToken.isEmpty()) {
+        if (cfg.rcApiToken.isEmpty()) {
             client.execute(() ->
-                source.sendFeedback(statusLine("Token", false, "nicht konfiguriert - nutze: /rc token <token>"))
+                source.sendFeedback(statusLine("RC Token", false, "nicht konfiguriert - öffne Einstellungen mit R+C"))
             );
             return;
         }
 
-        if (cfg.apiUrl.isEmpty() || cfg.apiUrl.equals("http://localhost:8000")) {
+        if (cfg.rcApiUrl.isEmpty()) {
             client.execute(() ->
-                source.sendFeedback(statusLine("URL", false, "nicht konfiguriert - nutze: /rc url <url>"))
+                source.sendFeedback(statusLine("RC URL", false, "nicht konfiguriert - öffne Einstellungen mit R+C"))
             );
             return;
         }
 
         HttpRequest req = HttpRequest.newBuilder()
-            .uri(URI.create(cfg.apiUrl + "/v1/ping"))
-            .header("Authorization", "Bearer " + cfg.apiToken)
+            .uri(URI.create(cfg.rcApiUrl + "/v1/ping"))
+            .header("Authorization", "Bearer " + cfg.rcApiToken)
             .GET()
             .build();
 

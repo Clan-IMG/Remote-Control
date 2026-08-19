@@ -68,14 +68,14 @@ public class PaymentPoller {
         if (!running.compareAndSet(false, true)) return;
 
         RemoteControlConfig cfg = RemoteControlConfig.get();
-        if (cfg.apiToken.isEmpty()) {
+        if (cfg.rcApiToken.isEmpty()) {
             running.set(false);
             return;
         }
 
         HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(cfg.apiUrl + "/v1/pay/pending"))
-                .header("Authorization", "Bearer " + cfg.apiToken)
+                .uri(URI.create(cfg.rcApiUrl + "/v1/pay/pending"))
+                .header("Authorization", "Bearer " + cfg.rcApiToken)
                 .GET()
                 .build();
 
@@ -158,8 +158,8 @@ public class PaymentPoller {
 
     private static void markDone(RemoteControlConfig cfg, String id) {
         HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(cfg.apiUrl + "/v1/pay/" + id + "/done"))
-                .header("Authorization", "Bearer " + cfg.apiToken)
+                .uri(URI.create(cfg.rcApiUrl + "/v1/pay/" + id + "/done"))
+                .header("Authorization", "Bearer " + cfg.rcApiToken)
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build();
 
@@ -173,8 +173,8 @@ public class PaymentPoller {
     private static void markFailed(RemoteControlConfig cfg, String id, String reason) {
         String json = "{\"reason\":\"" + reason.replace("\"", "'") + "\"}";
         HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(cfg.apiUrl + "/v1/pay/" + id + "/fail"))
-                .header("Authorization", "Bearer " + cfg.apiToken)
+                .uri(URI.create(cfg.rcApiUrl + "/v1/pay/" + id + "/fail"))
+                .header("Authorization", "Bearer " + cfg.rcApiToken)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
                 .build();

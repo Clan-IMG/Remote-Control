@@ -1,0 +1,4 @@
+{
+    "dm-message-format-send": "&b&LFREUNDE&r &8» &r&7[&cDu &7-> &c%player%&7] &r&f%message%",
+    "dm-message-format-receive": "&b&lFREUNDE&r &8» &r&7[&c%player% &7-> &cMir&7] &r&f%message%"
+}

@@ -26,9 +26,10 @@ public class Remote_controlClient implements ClientModInitializer {
             }
         });
 
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-            RcPingCommand.register(dispatcher)
-        );
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            RcPingCommand.register(dispatcher);
+            LogCommand.register(dispatcher);
+        });
     }
 }
 
