@@ -31,7 +31,7 @@ public class AutoReconnectManager {
     private static final int PAYOUT_SWITCH_DELAY = 200; // 10 s
 
     private static int periodicCheckTicks = 0;
-    private static final int PERIODIC_CHECK_INTERVAL = 18000; // 15 min
+    private static final int PERIODIC_CHECK_INTERVAL = 6000; // 5 min
 
     /** Called by ClientPlayConnectionEvents.JOIN */
     public static void onJoin(MinecraftClient client) {
@@ -144,13 +144,19 @@ public class AutoReconnectManager {
             }
         }
 
-        // Periodic safety check: every 15 min ensure we're on the payout server
-        if (client.player != null && !onPayoutServer && !connectingToPayoutServer && payoutSwitchDelay == 0) {
+        // Periodic safety check: every 5 min, re-sync to the payout server. This does NOT
+        // gate on onPayoutServer - that flag is only ever an assumption (arrival is timer-based
+        // and "assumed" above regardless of whether the switch actually succeeded, and a later
+        // kick back off the backend is a seamless proxy switch that fires no JOIN/DISCONNECT
+        // event to correct it). Re-issuing the switch periodically is what actually recovers
+        // from a failed attempt or a silent kick, capped to one attempt per interval since
+        // switchToPayoutServer() is a no-op while connectingToPayoutServer is already true.
+        if (client.player != null && !connectingToPayoutServer && payoutSwitchDelay == 0) {
             RemoteControlConfig cfg = RemoteControlConfig.get();
             if (!cfg.payoutServer.isEmpty()) {
                 if (++periodicCheckTicks >= PERIODIC_CHECK_INTERVAL) {
                     periodicCheckTicks = 0;
-                    LOGGER.info("[RC] Periodic check: not on payout server, switching");
+                    LOGGER.info("[RC] Periodic check: re-syncing to payout server");
                     switchToPayoutServer(client);
                 }
             } else {
