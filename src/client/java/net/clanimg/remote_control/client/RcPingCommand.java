@@ -61,6 +61,10 @@ public class RcPingCommand {
         );
 
         client.execute(() -> source.sendFeedback(payoutStatusLine(cfg)));
+        client.execute(() -> {
+            String block = PaymentPoller.blockReason();
+            source.sendFeedback(statusLine("Auszahlungen", block == null, block == null ? "bereit" : "pausiert - " + block));
+        });
 
         if (cfg.rcApiToken.isEmpty()) {
             client.execute(() ->

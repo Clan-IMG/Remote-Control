@@ -15,13 +15,10 @@ import net.minecraft.util.Formatting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 
 /** /rc log <auftragnummer> [zahl] – holt Nachrichten direkt von der Chat-API. */
 public class LogCommand {
@@ -30,20 +27,11 @@ public class LogCommand {
     private static final Gson GSON = new Gson();
     private static final HttpClient HTTP = HttpClient.newHttpClient();
 
-    private static String fmtSend    = "&b&lFREUNDE&r &8\u00bb &r&7[&cDu &7-> &c%player%&7] &r&f%message%";
-    private static String fmtReceive = "&b&lFREUNDE&r &8\u00bb &r&7[&c%player% &7-> &cMir&7] &r&f%message%";
-
-    static {
-        try (InputStream in = LogCommand.class.getResourceAsStream("/config-chat.json")) {
-            if (in != null) {
-                JsonObject cfg = new Gson().fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), JsonObject.class);
-                if (cfg.has("dm-message-format-send"))    fmtSend    = cfg.get("dm-message-format-send").getAsString();
-                if (cfg.has("dm-message-format-receive")) fmtReceive = cfg.get("dm-message-format-receive").getAsString();
-            }
-        } catch (Exception e) {
-            // keep defaults
-        }
-    }
+    // dm_message.send / dm_message.receive aus chat-format.yml (Ersatz fuer config-chat.json)
+    private static final String fmtSend    = ChatFormat.template(ChatFormat.DM, "send",
+        "&b&lFREUNDE&r &8\u00bb &r&7[&cDu &7-> &c%player%&7] &r&f%message%");
+    private static final String fmtReceive = ChatFormat.template(ChatFormat.DM, "receive",
+        "&b&lFREUNDE&r &8\u00bb &r&7[&c%player% &7-> &cMir&7] &r&f%message%");
 
     public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher) {
         dispatcher.register(

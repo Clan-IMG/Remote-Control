@@ -151,10 +151,12 @@ public class AutoReconnectManager {
         // event to correct it). Re-issuing the switch periodically is what actually recovers
         // from a failed attempt or a silent kick, capped to one attempt per interval since
         // switchToPayoutServer() is a no-op while connectingToPayoutServer is already true.
+        // Never switch while a /pay is waiting for its confirmation - the switch would swallow the
+        // server's reply; the check just fires as soon as that payment is resolved.
         if (client.player != null && !connectingToPayoutServer && payoutSwitchDelay == 0) {
             RemoteControlConfig cfg = RemoteControlConfig.get();
             if (!cfg.payoutServer.isEmpty()) {
-                if (++periodicCheckTicks >= PERIODIC_CHECK_INTERVAL) {
+                if (++periodicCheckTicks >= PERIODIC_CHECK_INTERVAL && !PaymentPoller.isPaymentInFlight()) {
                     periodicCheckTicks = 0;
                     LOGGER.info("[RC] Periodic check: re-syncing to payout server");
                     switchToPayoutServer(client);

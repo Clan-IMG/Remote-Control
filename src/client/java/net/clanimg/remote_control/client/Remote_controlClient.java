@@ -16,8 +16,10 @@ public class Remote_controlClient implements ClientModInitializer {
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
             AutoReconnectManager.onJoin(client));
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
-            AutoReconnectManager.onDisconnect());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            PaymentPoller.onDisconnect();
+            AutoReconnectManager.onDisconnect();
+        });
 
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (!overlay) {
@@ -29,6 +31,7 @@ public class Remote_controlClient implements ClientModInitializer {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             RcPingCommand.register(dispatcher);
             LogCommand.register(dispatcher);
+            PayCommand.register(dispatcher);
         });
     }
 }

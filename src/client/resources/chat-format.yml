@@ -1,0 +1,39 @@
+# Servernachrichten 1:1 (inkl. &-Farbcodes). Eine Nachricht wird nur erkannt, wenn die KOMPLETTE
+# Chatzeile zur Vorlage passt - Spieler koennen sie per DM/Chat also nicht nachmachen.
+#
+# pay_message:
+#   fromme     = Bestaetigung einer Auszahlung - nur sie bucht ab (Name UND Betrag muessen passen)
+#   code 400   = Fehler - die laufende Auszahlung schlaegt fehl (neue Fehlertexte einfach hier ergaenzen)
+#   andere 200 = betreffen keine Auszahlung (z.B. tome = jemand hat dem Bot Geld gegeben)
+# Kommt keine passende Nachricht, gilt die Zahlung NICHT als fehlgeschlagen, sondern als unbestaetigt.
+
+pay_message:
+  tome:
+    code: 200
+    message: "&c&lOPSUCHT &8» &b%player% &7hat dir &b%amount%$ &7gegeben."
+  fromme: 
+    code: 200
+    message: "&c&lOPSUCHT &8» &7Du hast &b%player% %amount%$ &7gegeben."
+  nomoney: 
+    code: 400
+    message: "&c&lOPSUCHT &8» &cDu hast nicht genug Guthaben!"
+  frommetome: 
+    code: 400
+    message: "&c&lOPSUCHT &8» &cDu kannst dir selbst kein Geld senden!"
+  notonline: 
+    code: 400
+    message: "&c&lOPSUCHT &8» &7Spieler &b%player% &7ist nicht online!"
+
+dm_message:
+  send:
+    code: 200
+    message: "&b&LFREUNDE&r &8» &r&7[&cDu &7-> &c%player%&7] &r&f%message%"
+  receive:
+    code: 200
+    message: "&b&lFREUNDE&r &8» &r&7[&c%player% &7-> &cMir&7] &r&f%message%"
+  notonline:
+    code: 400
+    message: "&c&lOPSUCHT &8» &cDer Spieler ist nicht online!"
+  ignore:
+    code: 400
+    message: "&b&lFREUNDE &8» &cDer Spieler hat dich auf der Ignore-Liste!"
